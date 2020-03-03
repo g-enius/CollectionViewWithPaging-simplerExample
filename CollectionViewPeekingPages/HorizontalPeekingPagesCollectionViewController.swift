@@ -9,6 +9,11 @@
 import UIKit
 
 class HorizontalPeekingPagesCollectionViewController: UICollectionViewController {
+    
+    let numberOfColumns = 4
+    let numberOfRows = 6
+    
+    
     private var indexOfCellBeforeDragging = 0
     private var collectionViewFlowLayout: UICollectionViewFlowLayout {
         return collectionViewLayout as! UICollectionViewFlowLayout
@@ -34,15 +39,23 @@ class HorizontalPeekingPagesCollectionViewController: UICollectionViewController
         let inset: CGFloat = calculateSectionInset()
         collectionViewFlowLayout.sectionInset = UIEdgeInsets(top: 0, left: inset, bottom: 0, right: inset)
 
-        collectionViewFlowLayout.itemSize = CGSize(width: collectionViewLayout.collectionView!.frame.size.width - inset * 2, height: collectionViewLayout.collectionView!.frame.size.height)
+        collectionViewFlowLayout.itemSize = CGSize(width: collectionViewLayout.collectionView!.frame.size.width - inset * 2, height: 100)
     }
 
     private func indexOfMajorCell() -> Int {
         let itemWidth = collectionViewFlowLayout.itemSize.width
+        print("collectionView.contentOffset.x = \(collectionView.contentOffset.x)")
+
         let proportionalOffset = collectionViewLayout.collectionView!.contentOffset.x / itemWidth
         let index = Int(round(proportionalOffset))
+        
+        print("index = \(index)")
         let numberOfItems = collectionView.numberOfItems(inSection: 0)
-        let safeIndex = max(0, min(numberOfItems - 1, index))
+
+        let safeIndex = max(0, min(numberOfItems - 1, index * numberOfRows))
+        
+        print("safeIndex = \(safeIndex)")
+
         return safeIndex
     }
 
@@ -59,16 +72,22 @@ class HorizontalPeekingPagesCollectionViewController: UICollectionViewController
 
         // calculate conditions:
         let dataSourceCount = collectionView(collectionView!, numberOfItemsInSection: 0)
+//        let numberOfColumn = 4
+
+        
         let swipeVelocityThreshold: CGFloat = 0.5 // after some trail and error
-        let hasEnoughVelocityToSlideToTheNextCell = indexOfCellBeforeDragging + 1 < dataSourceCount && velocity.x > swipeVelocityThreshold
-        let hasEnoughVelocityToSlideToThePreviousCell = indexOfCellBeforeDragging - 1 >= 0 && velocity.x < -swipeVelocityThreshold
+        let hasEnoughVelocityToSlideToTheNextCell = indexOfCellBeforeDragging + numberOfRows < dataSourceCount && velocity.x > swipeVelocityThreshold
+        let hasEnoughVelocityToSlideToThePreviousCell = indexOfCellBeforeDragging - numberOfRows >= 0 && velocity.x < -swipeVelocityThreshold
         let majorCellIsTheCellBeforeDragging = indexOfMajorCell == indexOfCellBeforeDragging
         let didUseSwipeToSkipCell = majorCellIsTheCellBeforeDragging && (hasEnoughVelocityToSlideToTheNextCell || hasEnoughVelocityToSlideToThePreviousCell)
 
         if didUseSwipeToSkipCell {
+            print("indexOfCellBeforeDragging = \(indexOfCellBeforeDragging)")
+            let snapToIndex = indexOfCellBeforeDragging + (hasEnoughVelocityToSlideToTheNextCell ? numberOfRows : -numberOfRows)
+            print("snapToIndex = \(snapToIndex)")
 
-            let snapToIndex = indexOfCellBeforeDragging + (hasEnoughVelocityToSlideToTheNextCell ? 1 : -1)
-            let toValue = collectionViewFlowLayout.itemSize.width * CGFloat(snapToIndex)
+            let toValue = collectionViewFlowLayout.itemSize.width * CGFloat(snapToIndex/numberOfRows)
+            print("toValue = \(toValue)")
 
             // Damping equal 1 => no oscillations => decay animation:
             UIView.animate(withDuration: 0.3, delay: 0, usingSpringWithDamping: 1, initialSpringVelocity: velocity.x, options: .allowUserInteraction, animations: {
